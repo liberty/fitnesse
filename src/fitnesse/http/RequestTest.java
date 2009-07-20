@@ -10,6 +10,7 @@ import java.io.PipedOutputStream;
 import junit.framework.TestCase;
 import util.FileUtil;
 import fitnesse.components.Base64;
+import fitnesse.responders.editing.EditResponder;
 
 public class RequestTest extends TestCase {
   PipedOutputStream output;
@@ -183,11 +184,11 @@ public class RequestTest extends TestCase {
     appendToMessage("Content-type: application/x-www-form-urlencoded\r\n");
     appendToMessage("Content-length: 67\r\n");
     appendToMessage("\r\n");
-    appendToMessage("saveId=1046584670887&Edit=on&Search=on&Test=on&Suite=on&content=abc");
+    appendToMessage(EditResponder.TIME_STAMP+"=1046584670887&Edit=on&Search=on&Test=on&Suite=on&content=abc");
 
     parseMessage();
 
-    assertTrue(request.hasInput("saveId"));
+    assertTrue(request.hasInput(EditResponder.TIME_STAMP));
     assertTrue(request.hasInput("Edit"));
     assertTrue(request.hasInput("Search"));
     assertTrue(request.hasInput("Test"));
@@ -201,36 +202,39 @@ public class RequestTest extends TestCase {
       for (int j = 0; j < 1000; j++)
         buffer.append(i);
     }
-
+    String prefix = EditResponder.TIME_STAMP + "=12345&content=";
     appendToMessage("POST /HelloThere HTTP/1.1\r\n");
-    appendToMessage("Content-length: 10021\r\n");
+    appendToMessage(String.format("Content-length: %d\r\n", prefix.length()+buffer.length()));
     appendToMessage("\r\n");
-    appendToMessage("saveId=12345&content=");
+    appendToMessage(prefix);
     appendToMessage(buffer);
 
     parseMessage();
 
-    assertEquals(buffer.toString(), request.getInput("content"));
+    String expected = buffer.toString();
+    String actual = (String)request.getInput("content");
+    assertEquals(expected.length(), actual.length());
+    assertEquals(expected, actual);
   }
 
   public void testMultiPartForms() throws Exception {
     String content = "----bob\r\n" +
-      "Content-Disposition: form-data; name=\"key1\"\r\n" +
-      "\r\n" +
-      "value1\r\n" +
-      "----bob\r\n" +
-      "Content-Disposition: form-data; name=\"key3\"\r\n" +
-      "\r\n" +
-      "some\r\nmulti-line\r\nvalue\r\n\r\n" +
-      "----bob\r\n" +
-      "Content-Disposition: form-data; name=\"key2\"\r\n" +
-      "\r\n" +
-      "value2\r\n" +
-      "----bob\r\n" +
-      "Content-Disposition: form-data; name=\"key4\"\r\n" +
-      "\r\n" +
-      "\r\n" +
-      "----bob--\r\n";
+    "Content-Disposition: form-data; name=\"key1\"\r\n" +
+    "\r\n" +
+    "value1\r\n" +
+    "----bob\r\n" +
+    "Content-Disposition: form-data; name=\"key3\"\r\n" +
+    "\r\n" +
+    "some\r\nmulti-line\r\nvalue\r\n\r\n" +
+    "----bob\r\n" +
+    "Content-Disposition: form-data; name=\"key2\"\r\n" +
+    "\r\n" +
+    "value2\r\n" +
+    "----bob\r\n" +
+    "Content-Disposition: form-data; name=\"key4\"\r\n" +
+    "\r\n" +
+    "\r\n" +
+    "----bob--\r\n";
 
     appendToMessage("GET /request-uri HTTP/1.1\r\n");
     appendToMessage("Content-Length: " + content.length() + "\r\n");
@@ -252,11 +256,11 @@ public class RequestTest extends TestCase {
 
   public void testUploadingFile() throws Exception {
     String content = "----bob\r\n" +
-      "Content-Disposition: form-data; name=\"file1\"; filename=\"mike dile.txt\"\r\n" +
-      "Content-Type: text/plain\r\n" +
-      "\r\n" +
-      "file contents\r\n" +
-      "----bob--\r\n";
+    "Content-Disposition: form-data; name=\"file1\"; filename=\"mike dile.txt\"\r\n" +
+    "Content-Type: text/plain\r\n" +
+    "\r\n" +
+    "file contents\r\n" +
+    "----bob--\r\n";
 
     appendToMessage("GET /request-uri HTTP/1.1\r\n");
     appendToMessage("Content-Length: " + content.length() + "\r\n");
@@ -270,16 +274,16 @@ public class RequestTest extends TestCase {
 
   public void testUploadingTwoFiles() throws Exception {
     String content = "-----------------------------7d32df3a80058\r\n" +
-      "Content-Disposition: form-data; name=\"file\"; filename=\"C:\\test.txt\"\r\n" +
-      "Content-Type: text/plain\r\n" +
-      "\r\n" +
-      "test\r\n" +
-      "-----------------------------7d32df3a80058\r\n" +
-      "Content-Disposition: form-data; name=\"file2\"; filename=\"C:\\test2.txt\"\r\n" +
-      "Content-Type: text/plain\r\n" +
-      "\r\n" +
-      "test2\r\n" +
-      "-----------------------------7d32df3a80058--\r\n";
+    "Content-Disposition: form-data; name=\"file\"; filename=\"C:\\test.txt\"\r\n" +
+    "Content-Type: text/plain\r\n" +
+    "\r\n" +
+    "test\r\n" +
+    "-----------------------------7d32df3a80058\r\n" +
+    "Content-Disposition: form-data; name=\"file2\"; filename=\"C:\\test2.txt\"\r\n" +
+    "Content-Type: text/plain\r\n" +
+    "\r\n" +
+    "test2\r\n" +
+    "-----------------------------7d32df3a80058--\r\n";
 
     appendToMessage("GET /request-uri HTTP/1.1\r\n");
     appendToMessage("Content-Length: " + content.length() + "\r\n");
@@ -362,5 +366,21 @@ public class RequestTest extends TestCase {
     appendToMessage("the Entity Body");
     parseMessage();
     assertEquals(70, request.numberOfBytesParsed());
+  }
+
+  public void testMultipleRequests() throws Exception {
+    appendToMessage("GET /resource?key1=value1&key1=value2 HTTP/1.1\r\n");
+    appendToMessage("\r\n");
+    parseMessage();
+    assertEquals(true, request.hasInput("key1"));
+    assertEquals("value1,value2", request.getInput("key1"));
+  }
+
+  public void testRequestWithSameValue() throws Exception {
+    appendToMessage("GET /resource?key1=value1&key1=value1 HTTP/1.1\r\n");
+    appendToMessage("\r\n");
+    parseMessage();
+    assertEquals(true, request.hasInput("key1"));
+    assertEquals("value1", request.getInput("key1"));
   }
 }

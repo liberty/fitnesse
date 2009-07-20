@@ -14,13 +14,14 @@ import java.util.regex.Pattern;
 
 import fitnesse.responders.run.TestSummary;
 import fitnesse.responders.run.slimResponder.SlimTestContext;
+import fitnesse.responders.run.slimResponder.SlimTestSystem;
 import fitnesse.wikitext.Utils;
 
 public abstract class SlimTable {
   protected Table table;
   private SlimTestContext testContext;
   protected String id;
-  protected String tableName;
+  private String tableName;
   private int instructionNumber = 0;
   protected List<Object> instructions;
   protected static final Pattern symbolAssignmentPattern = Pattern.compile("\\A\\s*\\$(\\w+)\\s*=\\s*\\Z");
@@ -40,14 +41,17 @@ public abstract class SlimTable {
     return parent;
   }
 
-  public void addChildTable(SlimTable table, int row) throws Exception {
-    table.id = id + "." + children.size();
-    table.tableName = table.tableName + "." + children.size();
-    table.parent = this;
-    children.add(table);
+  public void addChildTable(SlimTable slimtable, int row) throws Exception {
+    slimtable.id = id + "." + children.size();
+    slimtable.tableName = makeInstructionTag(instructionNumber)+"/"+slimtable.tableName;
+    instructionNumber++;
+    slimtable.parent = this;
+    children.add(slimtable);
 
-    Table t = getTable();
-    t.appendCellToRow(row, table.getTable());
+    Table parentTable = getTable();
+    Table childTable = slimtable.getTable();
+    childTable.setName(slimtable.tableName);
+    parentTable.appendCellToRow(row, childTable);
   }
 
   public SlimTable getChild(int i) {
@@ -96,7 +100,7 @@ public abstract class SlimTable {
     return makeInstructionTag(instructionNumber);
   }
 
-  protected String getTableName() {
+  public String getTableName() {
     return tableName;
   }
 
@@ -134,7 +138,7 @@ public abstract class SlimTable {
     return disgracedFixtureName;
   }
 
-  private String getFixtureName(String tableHeader) {
+  protected String getFixtureName(String tableHeader) {
     if (tableHeader.indexOf(":") == -1)
       return tableHeader;
     return tableHeader.split(":")[1];
@@ -220,7 +224,7 @@ public abstract class SlimTable {
   }
 
   protected String fail(String value) {
-    testSummary.wrong++;
+    testSummary.wrong = testSummary.getWrong() + 1;
     return table.fail(value);
   }
 
@@ -229,21 +233,22 @@ public abstract class SlimTable {
   }
 
   protected String pass(String value) {
-    testSummary.right++;
+    testSummary.right = testSummary.getRight() + 1;
     return table.pass(value);
   }
 
   protected String error(String value) {
-    testSummary.exceptions++;
+    testSummary.exceptions = testSummary.getExceptions() + 1;
     return table.error(value);
   }
 
   protected String ignore(String value) {
+    testSummary.ignores++;
     return table.ignore(value);
   }
 
   protected ReturnedValueExpectation makeReturnedValueExpectation(
-    String expected, String instructionTag, int col, int row) {
+    String instructionTag, int col, int row) {
     return new ReturnedValueExpectation(instructionTag, col, row);
   }
 
@@ -269,12 +274,15 @@ public abstract class SlimTable {
   }
 
 
-  protected String extractExeptionMessage(String value) {
-    return value.substring(2);
+  protected String makeExeptionMessage(String value) {
+    if (value.startsWith(SlimTestSystem.MESSAGE_FAIL)) 
+      return fail(value.substring(SlimTestSystem.MESSAGE_FAIL.length()));
+    else 
+      return error(value.substring(SlimTestSystem.MESSAGE_ERROR.length()));
   }
 
   protected boolean isExceptionMessage(String value) {
-    return value != null && value.startsWith("!:");
+    return value != null && (value.startsWith(SlimTestSystem.MESSAGE_FAIL) || value.startsWith(SlimTestSystem.MESSAGE_ERROR));
   }
 
   public boolean shouldIgnoreException(String resultKey, String resultString) {
@@ -314,6 +322,10 @@ public abstract class SlimTable {
     for (int col = 0; col < cols; col++)
       rowList.add(table.getCellContents(col, row));
     return rowList;
+  }
+
+  public List<SlimTable> getChildren() {
+    return children;
   }
 
   static class Disgracer {
@@ -417,14 +429,17 @@ public abstract class SlimTable {
 
     public void evaluateExpectation(Map<String, Object> returnValues) {
       Object returnValue = returnValues.get(instructionTag);
-      String value;
-      if (returnValue == null)
-        value = "null";
-      else
-        value = returnValue.toString();
-      String originalContent = table.getCellContents(col, row);
       String evaluationMessage;
-      evaluationMessage = evaluationMessage(value, originalContent);
+      if (returnValue == null) {
+        String originalContent = table.getCellContents(col, row);
+        evaluationMessage = originalContent + " " + ignore("Test not run");
+      }
+      else {
+        String value;
+        value = returnValue.toString();
+        String originalContent = table.getCellContents(col, row);
+        evaluationMessage = evaluationMessage(value, originalContent);
+      }
       if (evaluationMessage != null)
         table.setCell(col, row, evaluationMessage);
     }
@@ -434,7 +449,7 @@ public abstract class SlimTable {
       this.expected = expected;
       String evaluationMessage;
       if (isExceptionMessage(actual))
-        evaluationMessage = expected + " " + error(extractExeptionMessage(actual));
+        evaluationMessage = expected + " " + makeExeptionMessage(actual);
       else
         evaluationMessage = createEvaluationMessage(actual, expected);
       this.evaluationMessage = HtmlTable.colorize(evaluationMessage);
@@ -464,7 +479,7 @@ public abstract class SlimTable {
     }
 
     public String getEvaluationMessage() {
-      return evaluationMessage;
+      return evaluationMessage == null ? "" : evaluationMessage;
     }
   }
 

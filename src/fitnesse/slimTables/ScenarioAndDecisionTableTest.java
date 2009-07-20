@@ -54,7 +54,7 @@ public class ScenarioAndDecisionTableTest extends MockSlimTestContext {
     );
     List<Object> expectedInstructions =
       list(
-        list("scriptTable_did.0_0", "call", "scriptTableActor", "function", "7")
+        list("decisionTable_did_0/scriptTable_s_id_0", "call", "scriptTableActor", "function", "7")
       );
     assertEquals(expectedInstructions, instructions);
   }
@@ -72,8 +72,8 @@ public class ScenarioAndDecisionTableTest extends MockSlimTestContext {
     );
     List<Object> expectedInstructions =
       list(
-        list("scriptTable_did.0_0", "call", "scriptTableActor", "loginWithPasswordAndPin", "bob", "xyzzy", "7734"),
-        list("scriptTable_did.1_0", "call", "scriptTableActor", "loginWithPasswordAndPin", "bill", "yabba", "8892")
+        list("decisionTable_did_0/scriptTable_s_id_0", "call", "scriptTableActor", "loginWithPasswordAndPin", "bob", "xyzzy", "7734"),
+        list("decisionTable_did_1/scriptTable_s_id_0", "call", "scriptTableActor", "loginWithPasswordAndPin", "bill", "yabba", "8892")
       );
     assertEquals(expectedInstructions, instructions);
   }
@@ -90,7 +90,7 @@ public class ScenarioAndDecisionTableTest extends MockSlimTestContext {
     );
     Map<String, Object> pseudoResults = SlimClient.resultToMap(
       list(
-        list("scriptTable_did.0_0", "7")
+        list("decisionTable_did_0/scriptTable_s_id_0", "7")
       )
     );
     evaluateExpectations(pseudoResults);
@@ -101,10 +101,10 @@ public class ScenarioAndDecisionTableTest extends MockSlimTestContext {
     assertEquals(expectedScript, scriptTable);
     String dtHtml = dt.getTable().toString();
     assertSubString("<span id=\"test_status\" class=pass>Scenario</span>", dtHtml);
-    assertEquals(1, dt.getTestSummary().right);
-    assertEquals(0, dt.getTestSummary().wrong);
-    assertEquals(0, dt.getTestSummary().ignores);
-    assertEquals(0, dt.getTestSummary().exceptions);
+    assertEquals(1, dt.getTestSummary().getRight());
+    assertEquals(0, dt.getTestSummary().getWrong());
+    assertEquals(0, dt.getTestSummary().getIgnores());
+    assertEquals(0, dt.getTestSummary().getExceptions());
   }
 
   @Test
@@ -119,7 +119,7 @@ public class ScenarioAndDecisionTableTest extends MockSlimTestContext {
     );
     Map<String, Object> pseudoResults = SlimClient.resultToMap(
       list(
-        list("scriptTable_did.0_0", "7")
+        list("decisionTable_did_0/scriptTable_s_id_0", "7")
       )
     );
     evaluateExpectations(pseudoResults);
@@ -130,10 +130,10 @@ public class ScenarioAndDecisionTableTest extends MockSlimTestContext {
     assertEquals(expectedScript, scriptTable);
     String dtHtml = dt.getTable().toString();
     assertSubString("<span id=\"test_status\" class=fail>Scenario</span>", dtHtml);
-    assertEquals(0, dt.getTestSummary().right);
-    assertEquals(1, dt.getTestSummary().wrong);
-    assertEquals(0, dt.getTestSummary().ignores);
-    assertEquals(0, dt.getTestSummary().exceptions);
+    assertEquals(0, dt.getTestSummary().getRight());
+    assertEquals(1, dt.getTestSummary().getWrong());
+    assertEquals(0, dt.getTestSummary().getIgnores());
+    assertEquals(0, dt.getTestSummary().getExceptions());
   }
 
   @Test
@@ -169,7 +169,7 @@ public class ScenarioAndDecisionTableTest extends MockSlimTestContext {
     );
     Map<String, Object> pseudoResults = SlimClient.resultToMap(
       list(
-        list("scriptTable_did.0_0", "7")
+        list("decisionTable_did_0/scriptTable_s_id_0", "7")
       )
     );
     evaluateExpectations(pseudoResults);

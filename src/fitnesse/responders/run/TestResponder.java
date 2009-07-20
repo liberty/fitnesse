@@ -19,10 +19,12 @@ public class TestResponder extends ChunkingResponder implements SecureResponder 
   private boolean isClosed = false;
 
   private boolean fastTest = false;
+  private boolean remoteDebug = false;
   protected TestSystem testSystem;
 
   protected void doSending() throws Exception {
     fastTest |= request.hasInput("debug");
+    remoteDebug |= request.hasInput("remote_debug");
     data = page.getData();
 
     createFormatterAndWriteHead();
@@ -49,7 +51,7 @@ public class TestResponder extends ChunkingResponder implements SecureResponder 
   }
 
   BaseFormatter createXmlFormatter() throws Exception {
-    BaseFormatter formatter = new XmlFormatter(page) {
+    BaseFormatter formatter = new XmlFormatter(context, page) {
       @Override
       protected void close() throws Exception {
         closeHtmlResponse();
@@ -65,7 +67,7 @@ public class TestResponder extends ChunkingResponder implements SecureResponder 
 
 
   BaseFormatter createHtmlFormatter() throws Exception {
-    BaseFormatter formatter = new TestHtmlFormatter(page, context.htmlPageFactory) {
+    BaseFormatter formatter = new TestHtmlFormatter(context, page, context.htmlPageFactory) {
       @Override
       protected void writeData(String output) throws Exception {
         addToResponse(output);
@@ -90,6 +92,7 @@ public class TestResponder extends ChunkingResponder implements SecureResponder 
 
     MultipleTestsRunner runner = new MultipleTestsRunner(test2run, context, page, formatter);
     runner.setFastTest(fastTest);
+    runner.setDebug(isRemoteDebug());
 
     if (page.getData().getContent().length() == 0 && formatter instanceof TestHtmlFormatter) {
       ((TestHtmlFormatter) formatter).addMessageForBlankHtml();
@@ -151,5 +154,9 @@ public class TestResponder extends ChunkingResponder implements SecureResponder 
       response.closeChunks();
       response.close();
     }
+  }
+  
+  boolean isRemoteDebug() {
+    return remoteDebug;
   }
 }

@@ -1,14 +1,6 @@
 package fitnesseMain;
 
-import java.io.File;
-
-import util.CommandLine;
-import fitnesse.Arguments;
-import fitnesse.ComponentFactory;
-import fitnesse.FitNesse;
-import fitnesse.FitNesseContext;
-import fitnesse.Updater;
-import fitnesse.WikiPageFactory;
+import fitnesse.*;
 import fitnesse.authentication.Authenticator;
 import fitnesse.authentication.MultiUserAuthenticator;
 import fitnesse.authentication.OneUserAuthenticator;
@@ -19,6 +11,9 @@ import fitnesse.responders.ResponderFactory;
 import fitnesse.responders.WikiImportTestEventListener;
 import fitnesse.updates.UpdaterImplementation;
 import fitnesse.wiki.PageVersionPruner;
+import util.CommandLine;
+
+import java.io.File;
 
 public class FitNesseMain {
   private static String extraOutput;
@@ -47,8 +42,8 @@ public class FitNesseMain {
     context.port = arguments.getPort();
     context.rootPath = arguments.getRootPath();
     ComponentFactory componentFactory = new ComponentFactory(context.rootPath);
-    context.rootPageName = arguments.getRootDirectory();
-    context.rootPagePath = context.rootPath + "/" + context.rootPageName;
+    context.rootDirectoryName = arguments.getRootDirectory();
+    context.setRootPagePath();
     String defaultNewPageContent = componentFactory.getProperty(ComponentFactory.DEFAULT_NEWPAGE_CONTENT);
     if (defaultNewPageContent != null)
       context.defaultNewPageContent = defaultNewPageContent;
@@ -57,6 +52,7 @@ public class FitNesseMain {
     context.logger = makeLogger(arguments);
     context.authenticator = makeAuthenticator(arguments.getUserpass(), componentFactory);
     context.htmlPageFactory = componentFactory.getHtmlPageFactory(new HtmlPageFactory());
+    context.shouldCollectHistory = !arguments.isOmittingHistory();
 
     extraOutput = componentFactory.loadPlugins(context.responderFactory, wikiPageFactory);
     extraOutput += componentFactory.loadWikiPage(wikiPageFactory);
@@ -65,7 +61,7 @@ public class FitNesseMain {
     extraOutput += componentFactory.loadWikiWidgetInterceptors();
     extraOutput += componentFactory.loadContentFilter();
 
-    context.root = wikiPageFactory.makeRootPage(context.rootPath, context.rootPageName, componentFactory);
+    context.root = wikiPageFactory.makeRootPage(context.rootPath, context.rootDirectoryName, componentFactory);
 
     WikiImportTestEventListener.register();
 
@@ -73,7 +69,7 @@ public class FitNesseMain {
   }
 
   public static Arguments parseCommandLine(String[] args) {
-    CommandLine commandLine = new CommandLine("[-p port][-d dir][-r root][-l logDir][-e days][-o][-a userpass]");
+    CommandLine commandLine = new CommandLine("[-p port][-d dir][-r root][-l logDir][-e days][-o][-h][-a userpass]");
     Arguments arguments = null;
     if (commandLine.parse(args)) {
       arguments = new Arguments();
@@ -90,6 +86,7 @@ public class FitNesseMain {
       if (commandLine.hasOption("a"))
         arguments.setUserpass(commandLine.getOptionArgument("a", "userpass"));
       arguments.setOmitUpdates(commandLine.hasOption("o"));
+      arguments.setOmitHistory(commandLine.hasOption("h"));
     }
     return arguments;
   }
@@ -121,6 +118,7 @@ public class FitNesseMain {
     System.err.println("\t-l <log directory> {no logging}");
     System.err.println("\t-e <days> {" + Arguments.DEFAULT_VERSION_DAYS + "} Number of days before page versions expire");
     System.err.println("\t-o omit updates");
+    System.err.println("\t-h do not record test history.");    
     System.err.println("\t-a {user:pwd | user-file-name} enable authentication.");
   }
 

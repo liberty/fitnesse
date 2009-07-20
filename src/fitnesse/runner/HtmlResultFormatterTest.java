@@ -6,14 +6,14 @@ import java.io.InputStream;
 
 import util.RegexTestCase;
 import util.StreamReader;
-import fitnesse.html.HtmlPageFactory;
+import fitnesse.FitNesseContext;
 import fitnesse.responders.run.TestSummary;
 
 public class HtmlResultFormatterTest extends RegexTestCase {
   private HtmlResultFormatter formatter;
 
   public void setUp() throws Exception {
-    formatter = new HtmlResultFormatter(new HtmlPageFactory(), "somehost.com:8080", "FitNesse");
+    formatter = new HtmlResultFormatter(new FitNesseContext(), "somehost.com:8080", "FitNesse");
   }
 
   public void testIsValidHtml() throws Exception {

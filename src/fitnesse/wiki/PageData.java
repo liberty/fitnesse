@@ -10,10 +10,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import fitnesse.components.SaveRecorder;
-import fitnesse.responders.editing.EditResponder;
-import fitnesse.responders.run.SuiteContentsFinder;
 import fitnesse.responders.run.ExecutionLog;
+import fitnesse.responders.run.SuiteContentsFinder;
 import fitnesse.wikitext.WidgetBuilder;
 import fitnesse.wikitext.WikiWidget;
 import fitnesse.wikitext.widgets.ClasspathWidget;
@@ -26,6 +24,7 @@ import fitnesse.wikitext.widgets.WidgetRoot;
 import fitnesse.wikitext.widgets.WidgetWithTextArgument;
 import fitnesse.wikitext.widgets.XRefWidget;
 
+@SuppressWarnings("unchecked")
 public class PageData implements Serializable {
   private static final long serialVersionUID = 1L;
 
@@ -34,6 +33,7 @@ public class PageData implements Serializable {
 
   public static WidgetBuilder variableDefinitionWidgetBuilder = new WidgetBuilder(IncludeWidget.class, PreformattedWidget.class, VariableDefinitionWidget.class);
 
+  public static final String PropertyLAST_MODIFIED = "LastModified";
   public static final String PropertyHELP = "Help";
   public static final String PropertyPRUNE = "Prune";
   //TODO -AcD: refactor add other properties such as "Edit", "Suite", "Test", ...
@@ -79,7 +79,6 @@ public class PageData implements Serializable {
     properties.set("Files", "true");
     properties.set("RecentChanges", "true");
     properties.set("Search", "true");
-    properties.set(EditResponder.TICKET_ID, SaveRecorder.newTicket() + "");
     properties.setLastModificationTime(new Date());
 
     initTestOrSuiteProperty();
@@ -95,11 +94,12 @@ public class PageData implements Serializable {
     if (isErrorLogsPage())
       return;
 
-    if ((pageName.startsWith("Suite") || pageName.endsWith("Suite")) &&
+    if ((pageName.startsWith("Suite") || pageName.endsWith("Suite") || pageName.endsWith("Examples")) &&
       !pageName.equals(SuiteContentsFinder.SUITE_SETUP_NAME) &&
       !pageName.equals(SuiteContentsFinder.SUITE_TEARDOWN_NAME))
       properties.set("Suite", "true");
-    else if (pageName.startsWith("Test") || pageName.endsWith("Test"))
+    else if (pageName.startsWith("Test") || pageName.endsWith("Test") || pageName.startsWith("Example") || 
+      pageName.endsWith("Example"))
       properties.set("Test", "true");
   }
 
@@ -113,10 +113,11 @@ public class PageData implements Serializable {
   // really intended for general logging.
   private void handleInvalidPageName(WikiPage wikiPage) {
     try {
-      System.err.println("WikiPage " + wikiPage + " does not have a valid name!" + wikiPage.getName());
+      String msg = "WikiPage " + wikiPage + " does not have a valid name!" + wikiPage.getName();
+      System.err.println(msg);
+      throw new RuntimeException(msg);
     } catch (Exception e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
+      throw new RuntimeException(e);
     }
   }
 
