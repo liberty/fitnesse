@@ -153,7 +153,7 @@ public class EditResponder implements SecureResponder {
     return buttons;
   }
 
-  private HtmlTag makeScriptButtons() {
+  protected HtmlTag makeScriptButtons() {
     TagGroup scripts = new TagGroup();
 
     includeJavaScriptFile("/files/javascript/SpreadsheetTranslator.js", scripts);
