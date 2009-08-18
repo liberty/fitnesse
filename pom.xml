@@ -7,7 +7,7 @@
   <description> The fully integrated standalone wiki, and acceptance
     testing framework. </description>
   <url>http://fitnesse.org</url>
-  <version>20090807</version>
+  <version>20090709-SNAPSHOT</version>
   <licenses>
     <license>
       <name>GNU Public License, Version 2.0</name>
@@ -66,9 +66,7 @@
     <dependency>
       <groupId>org.json</groupId>
       <artifactId>json</artifactId>
-      <version>1.0</version>
-      <scope>system</scope>
-      <systemPath>${basedir}/lib/json.jar</systemPath>
+      <version>20090211</version>
     </dependency>
   </dependencies>
   <build>
@@ -105,4 +103,18 @@
       </plugin>
     </plugins>
   </build>
+   <distributionManagement>
+       <!-- use the following if you're not using a snapshot version. -->
+       <repository>
+           <id>nexus</id>
+           <name>liberty nexus proxy</name>
+           <url>http://liberty.sabre.com/nexus/content/repositories/releases</url>
+       </repository>
+       <!-- use the following if you ARE using a snapshot version. -->
+       <snapshotRepository>
+           <id>snapshot nexus</id>
+           <name>liberty snapshot nexus proxy</name>
+           <url>http://liberty.sabre.com/nexus/content/repositories/snapshots</url>
+       </snapshotRepository>
+   </distributionManagement>
 </project>
