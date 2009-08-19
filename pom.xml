@@ -95,7 +95,25 @@
           </archive>
         </configuration>
       </plugin>
-    </plugins>
+      <plugin>
+         <artifactId>maven-antrun-plugin</artifactId>
+         <executions>
+            <execution>
+               <id>copy-resources</id>
+               <phase>process-resources</phase>
+               <goals>
+                  <goal>run</goal>
+               </goals>
+               <configuration>
+                  <tasks>
+                     <property name="classes" refid="maven.runtime.classpath"/>
+                     <ant target="createUpdateLists" inheritRefs="true"/>
+                  </tasks>
+               </configuration>
+            </execution>
+         </executions>
+      </plugin>
+  </plugins>
   </build>
    <distributionManagement>
        <!-- use the following if you're not using a snapshot version. -->
