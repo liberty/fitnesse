@@ -27,6 +27,7 @@ public class MultipleTestsRunner implements TestSystemListener, Stoppable {
   private TestSystem currentTestSystem = null;
   private boolean isStopped = false;
   private String stopId = null;
+  private PageListSetUpTearDownSurrounder surrounder;
 
   private class PagesByTestSystem extends HashMap<TestSystem.Descriptor, LinkedList<WikiPage>> {
     private static final long serialVersionUID = 1L;
@@ -40,10 +41,11 @@ public class MultipleTestsRunner implements TestSystemListener, Stoppable {
     this.resultsListener = resultsListener;
     this.page = page;
     this.fitNesseContext = fitNesseContext;
+    surrounder = new PageListSetUpTearDownSurrounder(fitNesseContext.root);
   }
-  
+
   public void setDebug(boolean isDebug) {
-    this.isRemoteDebug = isDebug;
+    isRemoteDebug = isDebug;
   }
 
   public void setFastTest(boolean isFastTest) {
@@ -53,8 +55,11 @@ public class MultipleTestsRunner implements TestSystemListener, Stoppable {
   public void executeTestPages() {
     try {
       internalExecuteTestPages();
+      resultsListener.allTestingComplete();
     }
     catch (Exception exception) {
+      //hoped to write exceptions to log file but will take some work.
+      exception.printStackTrace(System.out);
       exceptionOccurred(exception);
     }
   }
@@ -88,7 +93,7 @@ public class MultipleTestsRunner implements TestSystemListener, Stoppable {
       if (!isStopped) {
         currentTestSystem = testSystemGroup.startTestSystem(descriptor, buildClassPath());
         testSystem = currentTestSystem;
-        resultsListener.announceStartTestSystem(testSystem, descriptor.testSystemName, descriptor.testRunner);
+        resultsListener.testSystemStarted(testSystem, descriptor.testSystemName, descriptor.testRunner);
       }
     }
     if (testSystem != null) {
@@ -154,31 +159,12 @@ public class MultipleTestsRunner implements TestSystemListener, Stoppable {
   }
 
   private PagesByTestSystem addSuiteSetUpAndTearDownToAllTestSystems(PagesByTestSystem pagesByTestSystem) throws Exception {
-    WikiPage firstPage = testPagesToRun.get(0);
-    WikiPage lastPage = testPagesToRun.get(testPagesToRun.size() - 1);
-
-    prependSuiteSetupToAllPageLists(pagesByTestSystem, firstPage);
-    appendSuiteTearDownToAllPageLists(pagesByTestSystem, lastPage);
+    if (testPagesToRun.size() == 0)
+      return pagesByTestSystem;
+    for (LinkedList<WikiPage> pagesForTestSystem : pagesByTestSystem.values())
+      surrounder.surroundGroupsOfTestPagesWithRespectiveSetUpAndTearDowns(pagesForTestSystem);
 
     return pagesByTestSystem;
-  }
-
-  private void appendSuiteTearDownToAllPageLists(PagesByTestSystem pagesByTestSystem, WikiPage page) throws Exception {
-    if (SuiteContentsFinder.SUITE_TEARDOWN_NAME.equals(page.getName())) {
-      for (Descriptor descriptor : pagesByTestSystem.keySet()) {
-        List<WikiPage> pagesForTestSystem = pagesByTestSystem.get(descriptor);
-        pagesForTestSystem.add(page);
-      }
-    }
-  }
-
-  private void prependSuiteSetupToAllPageLists(PagesByTestSystem pagesByTestSystem, WikiPage page) throws Exception {
-    if ((SuiteContentsFinder.SUITE_SETUP_NAME.equals(page.getName()))) {
-      for (Descriptor descriptor : pagesByTestSystem.keySet()) {
-        List<WikiPage> pagesForTestSystem = pagesByTestSystem.get(descriptor);
-        pagesForTestSystem.add(0, page);
-      }
-    }
   }
 
   private void announceTotalTestsToRun(PagesByTestSystem pagesByTestSystem) {
@@ -214,15 +200,15 @@ public class MultipleTestsRunner implements TestSystemListener, Stoppable {
     boolean isNewTest = firstInQueue != null && firstInQueue != currentTest;
     if (isNewTest) {
       currentTest = firstInQueue;
-      resultsListener.announceStartNewTest(currentTest);
+      resultsListener.newTestStarted(currentTest, System.currentTimeMillis());
     }
-    resultsListener.processTestOutput(output);
+    resultsListener.testOutputChunk(output);
   }
 
-  public void acceptResultsLast(TestSummary testSummary) throws Exception {
+  public void testComplete(TestSummary testSummary) throws Exception {
     WikiPage testPage = processingQueue.removeFirst();
 
-    resultsListener.processTestResults(testPage, testSummary);
+    resultsListener.testComplete(testPage, testSummary);
   }
 
   public synchronized void exceptionOccurred(Throwable e) {

@@ -9,7 +9,7 @@ import fitnesse.html.HtmlPage;
 import fitnesse.html.HtmlPageFactory;
 import fitnesse.html.HtmlTag;
 import fitnesse.html.HtmlUtil;
-import fitnesse.responders.run.SuiteHtmlFormatter;
+import fitnesse.responders.run.formatters.SuiteHtmlFormatter;
 import fitnesse.responders.run.TestSummary;
 import fitnesse.FitNesseContext;
 
@@ -84,7 +84,7 @@ public class HtmlResultFormatter implements ResultFormatter {
   public void acceptResult(PageResult result) throws Exception {
     String relativePageName = result.title();
     suiteFormatter.announceStartNewTest(relativePageName, rootPath + "." + relativePageName);
-    suiteFormatter.processTestOutput(result.content());
+    suiteFormatter.testOutputChunk(result.content());
     suiteFormatter.processTestResults(relativePageName, result.testSummary());
   }
 

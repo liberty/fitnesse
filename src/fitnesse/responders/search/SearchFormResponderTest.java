@@ -4,22 +4,29 @@ package fitnesse.responders.search;
 
 import static util.RegexTestCase.assertHasRegexp;
 import static util.RegexTestCase.assertSubString;
+import static fitnesse.responders.search.SearchFormResponder.*;
 
 import org.junit.Before;
 import org.junit.Test;
 
 import fitnesse.FitNesseContext;
+import fitnesse.testutil.FitNesseUtil;
+import fitnesse.wiki.InMemoryPage;
+import fitnesse.wiki.WikiPage;
 import fitnesse.http.MockRequest;
 import fitnesse.http.SimpleResponse;
 
 public class SearchFormResponderTest {
   private SimpleResponse response;
   private String content;
+  private FitNesseContext context;
 
   @Before
   public void setUp() throws Exception {
+    WikiPage root = InMemoryPage.makeRoot("RooT");
+    context = FitNesseUtil.makeTestContext(root);
     SearchFormResponder responder = new SearchFormResponder();
-    response = (SimpleResponse) responder.makeResponse(new FitNesseContext(), new MockRequest());
+    response = (SimpleResponse) responder.makeResponse(context, new MockRequest());
     content = response.getContent();
   }
 
@@ -49,7 +56,7 @@ public class SearchFormResponderTest {
     assertHasRegexp("<input.*value=\"Search Properties\".*>", content);
     assertHasRegexp("<input.*name=\"responder\".*value=\"executeSearchProperties\"", content);
 
-    for (String attributeName : SearchFormResponder.ACTION_ATTRIBUTES) {
+    for (String attributeName : SEARCH_ACTION_ATTRIBUTES) {
       assertAttributeOptionCreated(content, attributeName);
     }
   }

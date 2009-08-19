@@ -12,8 +12,9 @@ import fitnesse.http.MockResponseSender;
 import fitnesse.http.Response;
 import static fitnesse.responders.run.TestResponderTest.XmlTestUtilities.assertCounts;
 import static fitnesse.responders.run.TestResponderTest.XmlTestUtilities.getXmlDocumentFromResults;
-import fitnesse.testutil.FitSocketReceiver;
+import fitnesse.responders.run.formatters.XmlFormatter;
 import fitnesse.testutil.FitNesseUtil;
+import fitnesse.testutil.FitSocketReceiver;
 import fitnesse.wiki.*;
 import fitnesse.wikitext.Utils;
 import static junit.framework.Assert.assertNotNull;
@@ -26,9 +27,9 @@ import org.junit.Test;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
+import util.FileUtil;
 import static util.RegexTestCase.*;
 import util.XmlUtil;
-import util.FileUtil;
 import static util.XmlUtil.getElementByTagName;
 
 import java.io.File;
@@ -70,6 +71,7 @@ public class TestResponderTest {
   public void tearDown() throws Exception {
     receiver.close();
     FitNesseUtil.destroyTestContext();
+    XmlFormatter.clearTestTime();
   }
 
   @Test
@@ -188,6 +190,12 @@ public class TestResponderTest {
   }
 
   @Test
+  public void exitCodeIsCountOfErrors() throws Exception {
+    doSimpleRun(failFixtureTable());
+    assertSubString("Exit-Code: 1", results);
+  }
+
+  @Test
   public void testFixtureThatCrashes() throws Exception {
     responder.setFastTest(false);
     WikiPage testPage = crawler.addPage(root, PathParser.parse("TestPage"), classpathWidgets() + crashFixtureTable());
@@ -239,14 +247,14 @@ public class TestResponderTest {
 
   @Test
   public void slimXmlFormat() throws Exception {
-    context.shouldCollectHistory = true;
     request.addInput("format", "xml");
-    ensureXmlResultFileDoesNotExist(new TestSummary(2,1,0,0));
+    ensureXmlResultFileDoesNotExist(new TestSummary(2, 1, 0, 0));
     doSimpleRunWithTags(slimDecisionTable(), "zoo");
     Document xmlFromFile = getXmlFromFileAndDeleteFile();
     xmlChecker.assertXmlReportOfSlimDecisionTableWithZooTagIsCorrect();
     xmlChecker.assertXmlHeaderIsCorrect(xmlFromFile);
     xmlChecker.assertXmlReportOfSlimDecisionTableWithZooTagIsCorrect();
+    assertSubString("Exit-Code: 1", results);
   }
 
 
@@ -426,8 +434,8 @@ public class TestResponderTest {
     responder.setFastTest(false);
     WikiPage suitePage = crawler.addPage(root, PathParser.parse("TestSuite"), classpathWidgets());
     WikiPage testPage = crawler.addPage(suitePage, PathParser.parse("TestPage"), outputWritingTable("Output of TestPage"));
-    crawler.addPage(suitePage, PathParser.parse(SuiteContentsFinder.SUITE_SETUP_NAME), outputWritingTable("Output of SuiteSetUp"));
-    crawler.addPage(suitePage, PathParser.parse(SuiteContentsFinder.SUITE_TEARDOWN_NAME), outputWritingTable("Output of SuiteTearDown"));
+    crawler.addPage(suitePage, PathParser.parse(PageData.SUITE_SETUP_NAME), outputWritingTable("Output of SuiteSetUp"));
+    crawler.addPage(suitePage, PathParser.parse(PageData.SUITE_TEARDOWN_NAME), outputWritingTable("Output of SuiteTearDown"));
 
     WikiPagePath testPagePath = crawler.getFullPath(testPage);
     String resource = PathParser.render(testPagePath);
@@ -458,13 +466,13 @@ public class TestResponderTest {
 
   @Test
   public void checkHistoryForSimpleSlimTable() throws Exception {
-    context.shouldCollectHistory = true;
-    ensureXmlResultFileDoesNotExist(new TestSummary(2,0,0,0));
+    ensureXmlResultFileDoesNotExist(new TestSummary(2, 0, 0, 0));
     doSimpleRun(simpleSlimDecisionTable());
     Document xmlFromFile = getXmlFromFileAndDeleteFile();
     xmlChecker.assertXmlHeaderIsCorrect(xmlFromFile);
     assertHasRegexp("<td><span class=\"pass\">wow</span></td>", Utils.unescapeHTML(results));
   }
+
 
   private String errorWritingTable(String message) {
     return "\n|!-fitnesse.testutil.ErrorWritingFixture-!|\n" +
@@ -487,6 +495,10 @@ public class TestResponderTest {
 
   private String passFixtureTable() {
     return "|!-fitnesse.testutil.PassFixture-!|\n";
+  }
+
+  private String failFixtureTable() {
+    return "|!-fitnesse.testutil.FailFixture-!|\n";
   }
 
   class XmlChecker {

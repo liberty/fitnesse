@@ -4,6 +4,7 @@ package fitnesse.responders.search;
 
 import util.RegexTestCase;
 import fitnesse.FitNesseContext;
+import fitnesse.testutil.FitNesseUtil;
 import fitnesse.http.MockRequest;
 import fitnesse.http.MockResponseSender;
 import fitnesse.http.Response;
@@ -18,6 +19,7 @@ public class WhereUsedResponderTest extends RegexTestCase {
 
   public void setUp() throws Exception {
     root = InMemoryPage.makeRoot("RooT");
+    FitNesseContext context = FitNesseUtil.makeTestContext(root);
     PageCrawler crawler = root.getPageCrawler();
     crawler.addPage(root, PathParser.parse("PageOne"), "PageOne");
     pageTwo = crawler.addPage(root, PathParser.parse("PageTwo"), "PageOne");

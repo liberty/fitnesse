@@ -9,6 +9,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import fitnesse.FitNesseContext;
+import fitnesse.testutil.FitNesseUtil;
 import fitnesse.http.MockRequest;
 import fitnesse.http.SimpleResponse;
 import fitnesse.responders.run.TestSummary;
@@ -52,7 +53,7 @@ public class SlimTestSystemTest {
   public void setUp() throws Exception {
     root = InMemoryPage.makeRoot("root");
     crawler = root.getPageCrawler();
-    context = new FitNesseContext(root);
+    context = FitNesseUtil.makeTestContext(root);
     request = new MockRequest();
     responder = getSlimResponder();
     responder.setFastTest(true);
@@ -390,6 +391,15 @@ public class SlimTestSystemTest {
         "|1|\n");
     assertTestResultsContain("A Reportable Exception");
   }
+  
+  @Test
+  public void checkTestClassPrecededByDefine() throws Exception {
+    getResultsForPageContents("!define PI {3.141592}\n" +
+    "!path classes\n" +
+    "!path fitnesse.jar\n" +
+    "|fitnesse.testutil.PassFixture|\n");
+    assertTestResultsContain("PassFixture");
+  }
 
   @Test
   public void emptyScenarioTable() throws Exception {
@@ -407,7 +417,7 @@ public class SlimTestSystemTest {
     public void acceptOutputFirst(String output) throws Exception {
     }
 
-    public void acceptResultsLast(TestSummary testSummary) throws Exception {
+    public void testComplete(TestSummary testSummary) throws Exception {
     }
 
     public void exceptionOccurred(Throwable e) {

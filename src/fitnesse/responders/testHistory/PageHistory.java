@@ -1,7 +1,8 @@
 package fitnesse.responders.testHistory;
 
 import fitnesse.responders.run.TestSummary;
-import fitnesse.responders.run.XmlFormatter;
+import fitnesse.FitNesseContext;
+import fitnesse.wiki.WikiPage;
 import util.FileUtil;
 
 import java.io.File;
@@ -10,7 +11,8 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class PageHistory {
-  private SimpleDateFormat dateFormat = new SimpleDateFormat(XmlFormatter.TEST_RESULT_FILE_DATE_PATTERN);
+  private SimpleDateFormat dateFormat = new SimpleDateFormat(TestHistory.TEST_RESULT_FILE_DATE_PATTERN);
+  public static final String TEST_FILE_FORMAT = "\\A\\d{14}_\\d+_\\d+_\\d+_\\d+(.xml)*\\Z";
   private int failures = 0;
   private int passes = 0;
   private Date minDate = null;
@@ -19,6 +21,7 @@ public class PageHistory {
   private BarGraph barGraph;
   private String fullPageName;
   private final HashMap<Date, TestResultRecord> testResultMap = new HashMap<Date, TestResultRecord>();
+  private HashMap<Date, File> pageFiles = new HashMap<Date,File>();
 
   public PageHistory(File pageDirectory) {
     fullPageName = pageDirectory.getName();
@@ -30,11 +33,21 @@ public class PageHistory {
   }
 
   private void compileHistoryFromPageDirectory(File pageDirectory) throws ParseException {
-    File[] resultFiles = FileUtil.getDirectoryListing(pageDirectory);
-    for (File file : resultFiles)
-      if (!file.isDirectory())
+    File[] resultDir = FileUtil.getDirectoryListing(pageDirectory);
+
+    for (File file : resultDir)
+      if (fileIsNotADirectoryAndIsValid(file))
         compileResultFileIntoHistory(file);
     compileBarGraph();
+  }
+
+  private boolean fileIsNotADirectoryAndIsValid(File file) {
+    if(file.isDirectory())
+      return false;
+    if(!matchesPageHistoryFileFormat(file.getName()))
+      return false;
+    return true;
+
   }
 
   private void compileBarGraph() {
@@ -62,11 +75,31 @@ public class PageHistory {
 
   private void compileResultFileIntoHistory(File file) throws ParseException {
     TestResultRecord record = buildTestResultRecord(file);
-    testResultMap.put(record.getDate(), record);
+    Date date = record.getDate();
+    addTestResult(record, date);
     countResult(record);
-    setMinMaxDate(record.getDate());
+    setMinMaxDate(date);
     setMaxAssertions(record);
+    pageFiles.put(date, file);
   }
+
+  private void addTestResult(TestResultRecord record, Date date) {
+    Date keyDate = trimMilliseconds(date);
+    testResultMap.put(date, record);
+  }
+
+  private Date trimMilliseconds(Date date) {
+    long milliseconds = date.getTime();
+    long seconds = milliseconds / 1000;
+    return new Date(seconds *1000);
+  }
+
+  public String getPageFileName(Date date){
+    if(pageFiles.get(date) != null)
+    return pageFiles.get(date).getName();
+    return null;
+  }
+
 
   private void setMaxAssertions(TestResultRecord summary) {
     int assertions = summary.getRight() + summary.getWrong() + summary.getExceptions();
@@ -127,7 +160,7 @@ public class PageHistory {
   }
 
   public TestResultRecord get(Date key) {
-    return testResultMap.get(key);
+    return testResultMap.get(trimMilliseconds(key));
   }
 
   public int maxAssertions() {
@@ -141,7 +174,7 @@ public class PageHistory {
   }
 
   public PassFailBar getPassFailBar(Date date, int maxUnits) {
-    TestResultRecord summary = testResultMap.get(date);
+    TestResultRecord summary = get(date);
     int fail = summary.getWrong() + summary.getExceptions();
     double unitsPerAssertion = (double)maxUnits/(double)maxAssertions;
     int unitsForThisTest = (int)Math.round((fail + summary.getRight()) * unitsPerAssertion);
@@ -157,6 +190,18 @@ public class PageHistory {
   public String getFullPageName() {
     return fullPageName;
   }
+
+  public static boolean matchesPageHistoryFileFormat(String pageHistoryFileName) {
+    return pageHistoryFileName.matches(TEST_FILE_FORMAT);
+  }
+
+  public static String makePageHistoryFileName(FitNesseContext context, WikiPage page, TestSummary counts, long time) throws Exception {
+    return String.format("%s/%s/%s",
+      context.getTestHistoryDirectory(),
+      page.getPageCrawler().getFullPath(page).toString(),
+      TestHistory.makeResultFileName(counts, time));
+  }
+
 
   public static class TestResultRecord extends TestSummary {
     private File file;
@@ -178,7 +223,7 @@ public class PageHistory {
   }
 
   public static String formatDate(String format, Date date) {
-    SimpleDateFormat fmt = new SimpleDateFormat(format);
+    SimpleDateFormat fmt = new SimpleDateFormat(format, Locale.US);
     return fmt.format(date);
   }
 
@@ -187,7 +232,7 @@ public class PageHistory {
     private boolean pass;
 
     public PassFailReport(Date date, boolean pass) {
-      SimpleDateFormat dateFormat = new SimpleDateFormat(XmlFormatter.TEST_RESULT_FILE_DATE_PATTERN);
+      SimpleDateFormat dateFormat = new SimpleDateFormat(TestHistory.TEST_RESULT_FILE_DATE_PATTERN);
       this.date = dateFormat.format(date);
       this.pass = pass;
     }

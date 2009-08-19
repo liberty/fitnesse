@@ -3,19 +3,19 @@
 package fitnesse.responders.run;
 
 import fitnesse.FitNesseContext;
-import static fitnesse.responders.run.TestResponderTest.XmlTestUtilities.*;
 import fitnesse.http.MockRequest;
 import fitnesse.http.MockResponseSender;
 import fitnesse.http.Response;
-import fitnesse.testutil.FitSocketReceiver;
+import static fitnesse.responders.run.TestResponderTest.XmlTestUtilities.assertCounts;
+import static fitnesse.responders.run.TestResponderTest.XmlTestUtilities.getXmlDocumentFromResults;
+import fitnesse.responders.run.formatters.XmlFormatter;
 import fitnesse.testutil.FitNesseUtil;
+import fitnesse.testutil.FitSocketReceiver;
 import fitnesse.wiki.*;
 import static junit.framework.Assert.fail;
-import org.junit.After;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -35,6 +35,7 @@ public class SuiteResponderTest {
   private PageCrawler crawler;
   private String suitePageName;
   private final String fitPassFixture = "|!-fitnesse.testutil.PassFixture-!|\n";
+  private final String fitFailFixture = "|!-fitnesse.testutil.FailFixture-!|\n";
   private final String simpleSlimDecisionTable = "!define TEST_SYSTEM {slim}\n" +
     "|!-DT:fitnesse.slim.test.TestSlim-!|\n" +
     "|string|get string arg?|\n" +
@@ -78,6 +79,7 @@ public class SuiteResponderTest {
   public void tearDown() throws Exception {
     receiver.close();
     FitNesseUtil.destroyTestContext();
+    XmlFormatter.clearTestTime();
   }
 
   private String runSuite() throws Exception {
@@ -181,6 +183,13 @@ public class SuiteResponderTest {
     assertSubString("Exit-Code: 0", results);
   }
 
+  @Test
+  public void exitCodeHeaderIsErrorCount() throws Exception {
+    addTestToSuite("TestFailingTest", fitFailFixture);
+    String results = runSuite();
+    assertSubString("Exit-Code: 1", results);
+  }
+
 
   @Test
   public void testExecutionStatusAppears() throws Exception {
@@ -251,6 +260,39 @@ public class SuiteResponderTest {
     assertHasRegexp("#TestThree", results);
   }
 
+
+  @Test
+  public void exculdeSuiteQuery() throws Exception {
+    addTestPagesWithSuiteProperty();
+    request.setQueryString("excludeSuiteFilter=foo");
+    String results = runSuite();
+    assertHasRegexp("#TestOne", results);
+    assertDoesntHaveRegexp("#TestTwo", results);
+    assertHasRegexp("#TestThree", results);
+  }
+
+
+  @Test
+  public void testFirstTest() throws Exception {
+    addTestPagesWithSuiteProperty();
+    request.setQueryString("firstTest=TestThree");
+    String results = runSuite();
+    assertDoesntHaveRegexp("#TestOne", results);
+    assertHasRegexp("#TestTwo", results);
+    assertHasRegexp("#TestThree", results);
+  }
+
+  @Test
+  public void testFirstTestWholePath() throws Exception {
+    addTestPagesWithSuiteProperty();
+    request.setQueryString("firstTest=SuitePage.TestThree");
+    String results = runSuite();
+    assertDoesntHaveRegexp("#TestOne", results);
+    assertHasRegexp("#TestTwo", results);
+    assertHasRegexp("#TestThree", results);
+  }
+
+
   @Test
   public void testTagsShouldBeInheritedFromSuite() throws Exception {
     PageData suiteData = suite.getData();
@@ -269,7 +311,7 @@ public class SuiteResponderTest {
     PageData data2 = test2.getData();
     PageData data3 = test3.getData();
     data2.setAttribute(PageData.PropertySUITES, "foo");
-    data3.setAttribute(PageData.PropertySUITES, "bar, smoke");
+    data3.setAttribute(PageData.PropertySUITES, "bar, smoke");             
     test2.commit(data2);
     test3.commit(data3);
   }
@@ -316,9 +358,8 @@ public class SuiteResponderTest {
   }
 
   @Test
-  public void normalSuiteRunProducesTestResultFile() throws Exception {
-    context.shouldCollectHistory = true;
-    TestSummary counts = new TestSummary(2,0,0,0);
+  public void normalSuiteRunWithThreePassingTestsProducesSuiteResultFile() throws Exception {
+    TestSummary counts = new TestSummary(3, 0, 0, 0);
     XmlFormatter.setTestTime("12/5/2008 01:19:00");
     String resultsFileName = String.format("%s/SuitePage/20081205011900_%d_%d_%d_%d.xml",
       context.getTestHistoryDirectory(), counts.getRight(), counts.getWrong(), counts.getIgnores(), counts.getExceptions());
@@ -327,28 +368,42 @@ public class SuiteResponderTest {
     if (xmlResultsFile.exists())
       xmlResultsFile.delete();
 
-    addTestToSuite("SlimTest", simpleSlimDecisionTable);
-    String results = runSuite();
+    addTestToSuite("SlimTestOne", simpleSlimDecisionTable);
+    addTestToSuite("SlimTestTwo", simpleSlimDecisionTable);
+    runSuite();
 
-    assertTrue(resultsFileName, xmlResultsFile.exists());
     FileInputStream xmlResultsStream = new FileInputStream(xmlResultsFile);
-    Document xmlDoc = XmlUtil.newDocument(xmlResultsStream);
+    XmlUtil.newDocument(xmlResultsStream);
     xmlResultsStream.close();
     xmlResultsFile.delete();
   }
 
   @Test
-  public void xmlForSingleTestPageNameIsParenthetic() throws Exception {
-    request.setResource("SuitePage.TestOne");
+  public void normalSuiteRunProducesIndivualTestHistoryFile() throws Exception {
+    TestSummary counts = new TestSummary(2, 0, 0, 0);
+    XmlFormatter.setTestTime("12/5/2008 01:19:00");
+    String resultsFileName = String.format("%s/SuitePage.SlimTest/20081205011900_%d_%d_%d_%d.xml",
+      context.getTestHistoryDirectory(), counts.getRight(), counts.getWrong(), counts.getIgnores(), counts.getExceptions());
+    File xmlResultsFile = new File(resultsFileName);
+
+    if (xmlResultsFile.exists())
+      xmlResultsFile.delete();
+
+    addTestToSuite("SlimTest", simpleSlimDecisionTable);
+    runSuite();
+
+    assertTrue(resultsFileName, xmlResultsFile.exists());
+    FileInputStream xmlResultsStream = new FileInputStream(xmlResultsFile);
+    XmlUtil.newDocument(xmlResultsStream);
+    xmlResultsStream.close();
+    xmlResultsFile.delete();
+  }
+
+  @Test
+  public void exitCodeHeaderIsErrorCountForXml() throws Exception {
     request.addInput("format", "xml");
+    addTestToSuite("TestFailingTest", fitFailFixture);
     String results = runSuite();
-    Document testResultsDocument = getXmlDocumentFromResults(results);
-    Element testResultsElement = testResultsDocument.getDocumentElement();
-    assertEquals("testResults", testResultsElement.getNodeName());
-    NodeList resultList = testResultsElement.getElementsByTagName("result");
-    assertEquals(1, resultList.getLength());
-    Element result = (Element) resultList.item(0);
-    String pageName = XmlUtil.getTextValue(result, "relativePageName");
-    assertEquals("(TestOne)", pageName);
+    assertSubString("Exit-Code: 1", results);
   }
 }

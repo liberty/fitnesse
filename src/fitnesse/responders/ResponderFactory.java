@@ -4,18 +4,8 @@ package fitnesse.responders;
 
 import fitnesse.Responder;
 import fitnesse.http.Request;
-import fitnesse.responders.editing.EditResponder;
-import fitnesse.responders.editing.PropertiesResponder;
-import fitnesse.responders.editing.SavePropertiesResponder;
-import fitnesse.responders.editing.SaveResponder;
-import fitnesse.responders.editing.SymbolicLinkResponder;
-import fitnesse.responders.files.CreateDirectoryResponder;
-import fitnesse.responders.files.DeleteConfirmationResponder;
-import fitnesse.responders.files.DeleteFileResponder;
-import fitnesse.responders.files.FileResponder;
-import fitnesse.responders.files.RenameFileConfirmationResponder;
-import fitnesse.responders.files.RenameFileResponder;
-import fitnesse.responders.files.UploadResponder;
+import fitnesse.responders.editing.*;
+import fitnesse.responders.files.*;
 import fitnesse.responders.refactoring.DeletePageResponder;
 import fitnesse.responders.refactoring.MovePageResponder;
 import fitnesse.responders.refactoring.RefactorPageResponder;
@@ -25,20 +15,21 @@ import fitnesse.responders.search.ExecuteSearchPropertiesResponder;
 import fitnesse.responders.search.SearchFormResponder;
 import fitnesse.responders.search.SearchResponder;
 import fitnesse.responders.search.WhereUsedResponder;
+import fitnesse.responders.testHistory.HistoryComparerResponder;
+import fitnesse.responders.testHistory.PageHistoryResponder;
+import fitnesse.responders.testHistory.PurgeHistoryResponder;
+import fitnesse.responders.testHistory.TestHistoryResponder;
 import fitnesse.responders.versions.RollbackResponder;
 import fitnesse.responders.versions.VersionResponder;
 import fitnesse.responders.versions.VersionSelectionResponder;
-import fitnesse.responders.testHistory.TestHistoryResponder;
-import fitnesse.responders.testHistory.PageHistoryResponder;
 import fitnesse.wiki.WikiPage;
 import fitnesse.wikitext.widgets.WikiWordWidget;
-
-import java.util.Map;
-import java.util.HashMap;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Constructor;
-
 import util.StringUtil;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ResponderFactory {
   private final String rootPath;
@@ -47,7 +38,6 @@ public class ResponderFactory {
   public ResponderFactory(String rootPath) {
     this.rootPath = rootPath;
     responderMap = new HashMap<String, Class<?>>();
-    addResponder("dontCreatePage", NotFoundResponder.class);
     addResponder("edit", EditResponder.class);
     addResponder("saveData", SaveResponder.class);
     addResponder("search", SearchResponder.class);
@@ -90,6 +80,8 @@ public class ResponderFactory {
     addResponder("testHistory", TestHistoryResponder.class);
     addResponder("pageHistory", PageHistoryResponder.class);
     addResponder("addChild", AddChildPageResponder.class);
+    addResponder("purgeHistory", PurgeHistoryResponder.class);
+    addResponder("compareHistory", HistoryComparerResponder.class);
   }
 
   public void addResponder(String key, String responderClassName) throws ClassNotFoundException {

@@ -3,7 +3,6 @@
   <FitNesseVersion>$response.Version</FitNesseVersion>
   <rootPath>$response.RootPath</rootPath>
   #foreach ($result in $response.Results)
-
   <result>
     <counts>
       <right>$result.Right</right>
@@ -17,7 +16,7 @@
     <tags>$result.Tags</tags>
     #end
 
-    #if($result.Tables)
+    #if($result.Tables.size() > 0)
     <tables>
       #foreach($table in $result.Tables)
       <table>

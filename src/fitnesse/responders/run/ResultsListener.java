@@ -5,18 +5,20 @@ package fitnesse.responders.run;
 import fitnesse.wiki.WikiPage;
 
 public interface ResultsListener {
+
+  public void allTestingComplete() throws Exception;
   
   public void setExecutionLogAndTrackingId(String stopResponderId, CompositeExecutionLog log) throws Exception;
 
   public void announceNumberTestsToRun(int testsToRun);
 
-  public void announceStartTestSystem(TestSystem testSystem, String testSystemName, String testRunner) throws Exception;
+  public void testSystemStarted(TestSystem testSystem, String testSystemName, String testRunner) throws Exception;
 
-  public void announceStartNewTest(WikiPage test) throws Exception;
+  public void newTestStarted(WikiPage test, long time) throws Exception;
 
-  public void processTestOutput(String output) throws Exception;
+  public void testOutputChunk(String output) throws Exception;
 
-  public void processTestResults(WikiPage test, TestSummary testSummary) throws Exception;
+  public void testComplete(WikiPage test, TestSummary testSummary) throws Exception;
   
   public void errorOccured();
 }

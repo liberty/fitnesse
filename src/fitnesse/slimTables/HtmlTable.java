@@ -2,30 +2,26 @@
 // Released under the terms of the CPL Common Public License version 1.0.
 package fitnesse.slimTables;
 
+import fitnesse.html.HtmlTag;
+import fitnesse.html.HtmlUtil;
+import fitnesse.slim.SlimError;
+import fitnesse.wikitext.Utils;
+import org.htmlparser.Node;
+import org.htmlparser.Parser;
+import org.htmlparser.Tag;
+import org.htmlparser.nodes.TextNode;
+import org.htmlparser.tags.*;
+import org.htmlparser.util.NodeList;
+
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.htmlparser.Node;
-import org.htmlparser.Parser;
-import org.htmlparser.Tag;
-import org.htmlparser.nodes.TextNode;
-import org.htmlparser.tags.CompositeTag;
-import org.htmlparser.tags.Div;
-import org.htmlparser.tags.TableColumn;
-import org.htmlparser.tags.TableHeader;
-import org.htmlparser.tags.TableRow;
-import org.htmlparser.tags.TableTag;
-import org.htmlparser.util.NodeList;
-
-import fitnesse.html.HtmlTag;
-import fitnesse.html.HtmlUtil;
-import fitnesse.slim.SlimError;
-import fitnesse.wikitext.Utils;
-
 public class HtmlTable implements Table {
+  private static final Random RANDOM_GENERATOR = new SecureRandom();
   private static Pattern coloredCellPattern = Pattern.compile("<span class=\"(\\w*)\">(.*)(</span>)");
   private List<Row> rows = new ArrayList<Row>();
   private TableTag tableNode;
@@ -51,6 +47,10 @@ public class HtmlTable implements Table {
 
   public String getCellContents(int columnIndex, int rowIndex) {
     return rows.get(rowIndex).getColumn(columnIndex).getContent();
+  }
+
+  public String getCellResult(int col, int row) {
+    return rows.get(row).getColumn(col).getResult();
   }
 
 
@@ -133,8 +133,8 @@ public class HtmlTable implements Table {
   private Tag newTag(Class<? extends Tag> klass) {
     Tag tag = null;
     try {
-      tag = (Tag) klass.newInstance();
-      Tag endTag = (Tag) klass.newInstance();
+      tag = klass.newInstance();
+      Tag endTag = klass.newInstance();
       endTag.setTagName("/" + tag.getTagName());
       endTag.setParent(tag);
       tag.setEndTag(endTag);
@@ -248,7 +248,7 @@ public class HtmlTable implements Table {
     }
 
     public String makeCollapsableSection() throws Exception {
-      String id = new Random().nextLong() + "";
+      String id = RANDOM_GENERATOR.nextLong() + "";
       HtmlTag outerDiv;
 
       outerDiv = HtmlUtil.makeDivTag("collapse_rim");
@@ -290,7 +290,7 @@ public class HtmlTable implements Table {
       Node lastCell = cells.elementAt(cells.size() - 1);
       Tag statusNode = findById(lastCell, "test_status");
       statusNode.setAttribute("class", testStatus ? "pass" : "fail");
-      for (int i=0; i<cells.size(); i++) {
+      for (int i = 0; i < cells.size(); i++) {
         Node cell = cells.elementAt(i);
         if (cell instanceof Tag) {
           Tag tag = (Tag) cell;
@@ -347,6 +347,18 @@ public class HtmlTable implements Table {
     public Cell(Node node) {
       columnNode = (TableColumn) newTag(TableColumn.class);
       columnNode.setChildren(new NodeList(node));
+    }
+
+    public String getResult() {
+      String result = columnNode.getAttribute("class");
+      if (result == null) {
+        Node child = columnNode.getFirstChild();
+        if (child != null)
+        return child.getText();
+      } else if (result.equals("pass") || result.equals("fail") || result.equals("error") || result.equals("ignore")) {
+        return result;
+      }
+      return "Unkown Result";
     }
 
     public String getContent() {

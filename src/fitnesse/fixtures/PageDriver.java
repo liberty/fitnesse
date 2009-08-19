@@ -2,11 +2,10 @@
 // Released under the terms of the CPL Common Public License version 1.0.
 package fitnesse.fixtures;
 
-import fitnesse.responders.run.XmlFormatter;
-import fitnesse.wiki.WikiPage;
-import fitnesse.wiki.WikiPagePath;
-import fitnesse.wiki.PathParser;
-import fitnesse.wiki.PageData;
+import fitnesse.responders.testHistory.TestHistory;
+import fitnesse.responders.run.formatters.XmlFormatter;
+import fitnesse.wiki.*;
+import fitnesse.authentication.OneUserAuthenticator;
 import org.htmlparser.*;
 import org.htmlparser.filters.AndFilter;
 import org.htmlparser.filters.HasAttributeFilter;
@@ -17,6 +16,7 @@ import org.htmlparser.util.NodeList;
 import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
+import java.text.ParseException;
 import java.util.Date;
 
 public class PageDriver {
@@ -30,10 +30,22 @@ public class PageDriver {
     creator.valid();
   }
 
+  public void createPageWithAuthentication(String pageName, String attributes) throws Exception {
+    creator.pageAttributes = attributes;
+    creator.pageContents = "nothing";
+    createPageWithContent(pageName, "");
+  }
+
   public int requestPage(String uri) throws Exception {
     requester.uri = uri;
     requester.execute();
     return requester.status();
+  }
+
+  public int requestPageAuthenticatedByUserAndPassword(String uri, String user, String password) throws Exception {
+    requester.username = user;
+    requester.password = password;
+    return requestPage(uri);
   }
 
   public void makeATestPage(String pageName) throws Exception {
@@ -62,6 +74,8 @@ public class PageDriver {
     html = html.replaceAll("\n", " ");
     html = html.replaceAll("\r", " ");
     html = html.replaceAll("\\s+", " ");
+    System.out.println("html = " + html);
+    System.out.println("subString = " + subString);
     return (html.indexOf(subString) != -1);
   }
 
@@ -106,8 +120,8 @@ public class PageDriver {
   public int countOfTagWithIdPrefix(String tag, String idPrefix) throws Exception {
     NodeFilter filter =
       new AndFilter(
-        new TagNameFilter(tag),
-        new HasAttributePrefixFilter("id", idPrefix));
+          new TagNameFilter(tag),
+          new HasAttributePrefixFilter("id", idPrefix));
     return getMatchingTags(filter).size();
   }
 
@@ -120,21 +134,21 @@ public class PageDriver {
   }
 
   public String pageHistoryDateSignatureOf(Date date) {
-    SimpleDateFormat dateFormat = new SimpleDateFormat(XmlFormatter.TEST_RESULT_FILE_DATE_PATTERN);
+    SimpleDateFormat dateFormat = new SimpleDateFormat(TestHistory.TEST_RESULT_FILE_DATE_PATTERN);
     return dateFormat.format(date);
   }
 
   public int countOfTagWithIdAndWithClassBelowTagWithIdPrefix(String childTag, String childId, String tagClass, String parentTag, String parentIdPrefix) throws Exception {
     NodeList parents = getMatchingTags(
-      new AndFilter(
-        new TagNameFilter(parentTag),
-        new HasAttributePrefixFilter("id", parentIdPrefix))
+        new AndFilter(
+            new TagNameFilter(parentTag),
+            new HasAttributePrefixFilter("id", parentIdPrefix))
     );
 
     NodeFilter predicates[] = {
-      new TagNameFilter(childTag),
-      new HasAttributeFilter("class", tagClass),
-      new HasAttributeFilter("id", childId)
+        new TagNameFilter(childTag),
+        new HasAttributeFilter("class", tagClass),
+        new HasAttributeFilter("id", childId)
     };
     NodeFilter filter = new AndFilter(predicates);
     NodeList matches = parents.extractAllNodesThatMatch(filter, true);
@@ -168,29 +182,46 @@ public class PageDriver {
 
 
   private static class HasAttributePrefixFilter extends HasAttributeFilter {
+    private static final long serialVersionUID = 1L;
+
     public HasAttributePrefixFilter(String attribute, String prefix) {
       super(attribute, prefix);
     }
 
     public boolean accept(Node node) {
-      Tag tag;
-      Attribute attribute;
-      boolean ret;
-
-      ret = false;
-      if (node instanceof Tag) {
-        tag = (Tag) node;
-        attribute = tag.getAttributeEx(mAttribute);
-        ret = null != attribute;
-        if (ret && (null != mValue))
-          ret = attribute.getValue().startsWith(mValue);
+      if (!(node instanceof Tag)) {
+        return false;
       }
 
-      return (ret);
+      if (mValue == null) {
+        return false;
+      }
+
+      Tag tag = (Tag) node;
+      if (tag.getAttributeEx(mAttribute) == null) {
+        return false;
+      }
+
+      return tag.getAttributeEx(mAttribute).getValue().startsWith(mValue);
     }
+  }
+
+  public boolean pageHasAttribute(String fullPathOfPage, String attribute) throws Exception {
+    PageCrawler crawler = FitnesseFixtureContext.root.getPageCrawler();
+    WikiPage page = crawler.getPage(FitnesseFixtureContext.root, PathParser.parse(fullPathOfPage));
+    PageData data = page.getData();
+    return data.hasAttribute(attribute);
   }
 
   public int echoInt(int i) {
     return i;
+  }
+
+  public void setXmlFormatterTimeTo(String time) throws ParseException {
+    XmlFormatter.setTestTime(time);
+  }
+
+  public void givenUserWithPassword(String user, String password) {
+    FitnesseFixtureContext.context.authenticator = new OneUserAuthenticator(user, password);
   }
 }

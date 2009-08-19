@@ -4,15 +4,17 @@ import fitnesse.FitNesseContext;
 import fitnesse.http.MockRequest;
 import fitnesse.http.SimpleResponse;
 import fitnesse.responders.run.TestSummary;
-import fitnesse.responders.run.XmlFormatter;
 import static fitnesse.responders.testHistory.PageHistory.BarGraph;
+import fitnesse.testutil.FitNesseUtil;
+import fitnesse.wiki.InMemoryPage;
+import fitnesse.wiki.WikiPage;
 import org.junit.After;
 import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 import util.FileUtil;
-import static util.RegexTestCase.assertHasRegexp;
 import static util.RegexTestCase.assertDoesntHaveRegexp;
+import static util.RegexTestCase.assertHasRegexp;
 
 import java.io.File;
 import java.io.IOException;
@@ -23,7 +25,7 @@ import java.util.Date;
 public class TestHistoryResponderTest {
   private File resultsDirectory;
   private TestHistory history;
-  private SimpleDateFormat dateFormat = new SimpleDateFormat(XmlFormatter.TEST_RESULT_FILE_DATE_PATTERN);
+  private SimpleDateFormat dateFormat = new SimpleDateFormat(TestHistory.TEST_RESULT_FILE_DATE_PATTERN);
   private TestHistoryResponder responder;
   private SimpleResponse response;
   private FitNesseContext context;
@@ -36,7 +38,8 @@ public class TestHistoryResponderTest {
     history = new TestHistory();
     responder = new TestHistoryResponder();
     responder.setResultsDirectory(resultsDirectory);
-    context = new FitNesseContext();
+    WikiPage root = InMemoryPage.makeRoot("RooT");
+    context = FitNesseUtil.makeTestContext(root);
   }
 
   private void makeResponse() throws Exception {
@@ -46,6 +49,17 @@ public class TestHistoryResponderTest {
   private void removeResultsDirectory() {
     if (resultsDirectory.exists())
       FileUtil.deleteFileSystemDirectory(resultsDirectory);
+  }
+
+  private void addPageDirectoryWithOneResult(String pageName, String testResultFileName) throws IOException {
+    File pageDirectory = addPageDirectory(pageName);
+    addTestResult(pageDirectory, testResultFileName);
+  }
+
+  private File addPageDirectory(String pageName) {
+    File pageDirectory = new File(resultsDirectory, pageName);
+    pageDirectory.mkdir();
+    return pageDirectory;
   }
 
   @After
@@ -61,26 +75,38 @@ public class TestHistoryResponderTest {
 
   @Test
   public void historyDirectoryWithOnePageDirectoryShouldShowOnePage() throws Exception {
-    addPageDirectory("SomePage");
+    addPageDirectoryWithOneResult("SomePage", "20090418123103_1_2_3_4");
     history.readHistoryDirectory(resultsDirectory);
     assertEquals(1, history.getPageNames().size());
     assertTrue(history.getPageNames().contains("SomePage"));
   }
 
-  private File addPageDirectory(String pageName) {
-    File pageDirectory = new File(resultsDirectory, pageName);
-    pageDirectory.mkdir();
-    return pageDirectory;
+  @Test
+  public void historyDirectoryWithOneEmptyPageDirectoryShouldShowNoPages() throws Exception {
+    addPageDirectory("SomePage");
+    history.readHistoryDirectory(resultsDirectory);
+    assertEquals(0, history.getPageNames().size());
+    assertFalse(history.getPageNames().contains("SomePage"));
   }
 
   @Test
   public void historyDirectoryWithTwoPageDirectoriesShouldShowTwoPages() throws Exception {
-    addPageDirectory("PageOne");
-    addPageDirectory("PageTwo");
+    addPageDirectoryWithOneResult("PageOne", "20090418123103_1_2_3_4");
+    addPageDirectoryWithOneResult("PageTwo", "20090418123103_1_2_3_4");
     history.readHistoryDirectory(resultsDirectory);
     assertEquals(2, history.getPageNames().size());
     assertTrue(history.getPageNames().contains("PageOne"));
     assertTrue(history.getPageNames().contains("PageTwo"));
+  }
+
+  @Test
+  public void historyDirectoryWithTwoEmptyPageDirectoriesShouldShowNoPages() throws Exception {
+    addPageDirectory("SomePage");
+    addPageDirectory("SomeOtherPage");
+    history.readHistoryDirectory(resultsDirectory);
+    assertEquals(0, history.getPageNames().size());
+    assertFalse(history.getPageNames().contains("SomePage"));
+    assertFalse(history.getPageNames().contains("SomeOtherPage"));
   }
 
   @Test
@@ -93,8 +119,7 @@ public class TestHistoryResponderTest {
 
   @Test
   public void pageDirectoryWithOneResultShouldShowOneHistoryRecord() throws Exception {
-    File pageDirectory = addPageDirectory("SomePage");
-    addTestResult(pageDirectory, "20090418123103_1_2_3_4");
+    addPageDirectoryWithOneResult("SomePage", "20090418123103_1_2_3_4");
 
     history.readHistoryDirectory(resultsDirectory);
     PageHistory pageHistory = history.getPageHistory("SomePage");
@@ -111,7 +136,7 @@ public class TestHistoryResponderTest {
   }
 
   private File addTestResult(File pageDirectory, String testResultFileName) throws IOException {
-    File testResultFile = new File(pageDirectory, testResultFileName+".xml");
+    File testResultFile = new File(pageDirectory, testResultFileName + ".xml");
     testResultFile.createNewFile();
     return testResultFile;
   }
@@ -176,7 +201,7 @@ public class TestHistoryResponderTest {
   @Test
   public void barGraphWithManyResultsShouldHaveCorrespondingBooleans() throws Exception {
     BarGraph barGraph = makeBarGraphWithManyResults();
-    assertEquals("-+----+-",barGraph.testString());
+    assertEquals("-+----+-", barGraph.testString());
   }
 
   @Test
@@ -245,10 +270,15 @@ public class TestHistoryResponderTest {
   }
 
   @Test
+  public void testHistoryFormatMatchesRegularExpression() throws Exception {
+    assertTrue(PageHistory.matchesPageHistoryFileFormat("20090513134559_01_02_03_04.xml"));
+  }
+
+  @Test
   public void whenPageDirectoryHasResultsRepsonseShouldShowSummary() throws Exception {
     File pageDirectory = addPageDirectory("SomePage");
     addTestResult(pageDirectory, "20090418123103_1_2_3_4");
-    addTestResult(pageDirectory, "20090419123103_1_0_0_0");    
+    addTestResult(pageDirectory, "20090419123103_1_0_0_0");
     makeResponse();
     assertHasRegexp("SomePage", response.getContent());
     assertHasRegexp("<td class=\"pass\">1</td>", response.getContent());
@@ -258,5 +288,47 @@ public class TestHistoryResponderTest {
     assertHasRegexp("<td class=\"fail\">.*-.*</td>", response.getContent());
     assertDoesntHaveRegexp("No History", response.getContent());
 
+  }
+
+  @Test
+  public void shouldNotCountABadDirectoryNameAsAHistoryDirectory() throws Exception {
+    addPageDirectoryWithOneResult("SomePage", "20090419123103_1_0_0_0");
+    addPageDirectoryWithOneResult("bad-directory-name", "20090419123103_1_0_0_0");
+    history.readHistoryDirectory(resultsDirectory);
+    assertEquals(1, history.getPageNames().size());
+    assertTrue(history.getPageNames().contains("SomePage"));
+  }
+
+  @Test
+  public void shouldGenerateHistoryEvenWithBadFileNames() throws Exception {
+    File pageDirectory = addPageDirectory("SomePage");
+    addTestResult(pageDirectory, "20090602000000_1_0_0_0");     //good
+    addTestResult(pageDirectory, "20090603000000_12_1_0_0");    //good
+    addTestResult(pageDirectory, "20090604000000_1_0_125_0");   //good
+
+    addTestResult(pageDirectory, "2009060200000012_1_0_0_0");   //bad
+    addTestResult(pageDirectory, "20090602000000_1_0_0_0_0_0"); //bad
+    addTestResult(pageDirectory, "bad_file_page_thing");        //bad
+
+    makeResponse();
+    history.readHistoryDirectory(resultsDirectory);
+    PageHistory pageHistory = history.getPageHistory("SomePage");
+    assertEquals(3, pageHistory.size());
+  }
+
+  @Test
+  public void shouldBeAbleToAcceptFormatIsXMLforARequest() throws Exception {
+    MockRequest request = new MockRequest();
+    request.addInput("format", "xml");
+    response = (SimpleResponse) responder.makeResponse(context, request);
+    assertHasRegexp("text/xml", response.getContentType());
+  }
+
+  @Test
+  public void shouldntBeCaseSensitiveForXMLRequest() throws Exception {
+    MockRequest request = new MockRequest();
+    request.addInput("format", "xML");
+    response = (SimpleResponse) responder.makeResponse(context, request);
+    assertHasRegexp("text/xml", response.getContentType());
   }
 }

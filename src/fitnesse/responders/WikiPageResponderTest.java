@@ -21,11 +21,13 @@ import util.RegexTestCase;
 public class WikiPageResponderTest extends RegexTestCase {
   private WikiPage root;
   private PageCrawler crawler;
+  private FitNesseContext context;
 
   @Override
   public void setUp() throws Exception {
     root = InMemoryPage.makeRoot("root");
     crawler = root.getPageCrawler();
+    context = FitNesseUtil.makeTestContext(root);
   }
 
   public void testResponse() throws Exception {
@@ -34,7 +36,7 @@ public class WikiPageResponderTest extends RegexTestCase {
     request.setResource("ChildPage");
 
     final Responder responder = new WikiPageResponder();
-    final SimpleResponse response = (SimpleResponse) responder.makeResponse(new FitNesseContext(root), request);
+    final SimpleResponse response = (SimpleResponse) responder.makeResponse(context, request);
 
     assertEquals(200, response.getStatus());
 
@@ -52,7 +54,7 @@ public class WikiPageResponderTest extends RegexTestCase {
   public void testAttributeButtons() throws Exception {
     crawler.addPage(root, PathParser.parse("NormalPage"));
     final WikiPage noButtonsPage = crawler.addPage(root, PathParser.parse("NoButtonPage"));
-    for (final String attribute : WikiPage.NON_SECURITY_ATTRIBUTES) {
+    for (final String attribute : PageData.NON_SECURITY_ATTRIBUTES) {
       final PageData data = noButtonsPage.getData();
       data.removeAttribute(attribute);
       noButtonsPage.commit(data);
@@ -102,7 +104,7 @@ public class WikiPageResponderTest extends RegexTestCase {
     final MockRequest request = new MockRequest();
     request.setResource(name);
     final Responder responder = new WikiPageResponder();
-    return (SimpleResponse) responder.makeResponse(new FitNesseContext(root), request);
+    return (SimpleResponse) responder.makeResponse(context, request);
   }
 
   public void testShouldGetVirtualPage() throws Exception {

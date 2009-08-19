@@ -31,6 +31,10 @@ public class AuthenticatorTest extends TestCase {
     public Response makeResponse(FitNesseContext context, Request request) throws Exception {
       return null;
     }
+
+    protected void refactorReferences(FitNesseContext context, WikiPage pageToBeMoved, String newParentName)
+        throws Exception {
+    }
   }
   
 
@@ -48,7 +52,7 @@ public class AuthenticatorTest extends TestCase {
 
   private void makeReadSecure(WikiPage frontpage) throws Exception {
     PageData data = frontpage.getData();
-    data.setAttribute(WikiPage.SECURE_READ);
+    data.setAttribute(PageData.PropertySECURE_READ);
     frontpage.commit(data);
   }
 

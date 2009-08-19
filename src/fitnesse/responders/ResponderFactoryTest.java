@@ -16,7 +16,9 @@ import fitnesse.responders.search.ExecuteSearchPropertiesResponder;
 import fitnesse.responders.search.SearchFormResponder;
 import fitnesse.responders.search.SearchResponder;
 import fitnesse.responders.search.WhereUsedResponder;
+import fitnesse.responders.testHistory.HistoryComparerResponder;
 import fitnesse.responders.testHistory.PageHistoryResponder;
+import fitnesse.responders.testHistory.PurgeHistoryResponder;
 import fitnesse.responders.testHistory.TestHistoryResponder;
 import fitnesse.responders.versions.RollbackResponder;
 import fitnesse.responders.versions.VersionResponder;
@@ -90,14 +92,6 @@ public class ResponderFactoryTest {
     request.setResource("SomePage");
     assertResponderType(EditResponder.class, root);
     assertResponderType(EditResponder.class, nonExistantPage);
-  }
-
-  @Test
-  public void testDontCreatePageResponder() throws Exception {
-    request.addInput("responder", "dontCreatePage");
-    request.setResource("SomePage");
-    assertResponderType(NotFoundResponder.class, root);
-    assertResponderType(NotFoundResponder.class, nonExistantPage);
   }
 
   @Test
@@ -321,5 +315,15 @@ public class ResponderFactoryTest {
   @Test
   public void testAddChildPageResponder() throws Exception {
     assertResponderTypeMatchesInput("addChild", AddChildPageResponder.class);
+  }
+
+  @Test
+  public void testPurgeHistoryResponder() throws Exception {
+    assertResponderTypeMatchesInput("purgeHistory", PurgeHistoryResponder.class);
+  }
+
+  @Test
+  public void testHistoryComparerResponder() throws Exception {
+    assertResponderTypeMatchesInput("compareHistory", HistoryComparerResponder.class);
   }
 }

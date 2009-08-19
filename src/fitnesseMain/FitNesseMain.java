@@ -13,7 +13,7 @@ import fitnesse.updates.UpdaterImplementation;
 import fitnesse.wiki.PageVersionPruner;
 import util.CommandLine;
 
-import java.io.File;
+import java.io.File;                                     
 
 public class FitNesseMain {
   private static String extraOutput;
@@ -23,11 +23,14 @@ public class FitNesseMain {
     Arguments arguments = parseCommandLine(args);
     if (arguments != null) {
       FitNesseContext context = loadContext(arguments);
-      Updater updater = new UpdaterImplementation(context);
+      Updater updater = null;
+      if (!arguments.isOmittingUpdates())
+        updater = new UpdaterImplementation(context);
       PageVersionPruner.daysTillVersionsExpire = arguments.getDaysTillVersionsExpire();
       fitnesse = new FitNesse(context, updater);
       if (!arguments.isOmittingUpdates())
         fitnesse.applyUpdates();
+      VelocityFactory.makeVelocityFactory(context);
       boolean started = fitnesse.start();
       if (started)
         printStartMessage(arguments, context);
@@ -52,7 +55,6 @@ public class FitNesseMain {
     context.logger = makeLogger(arguments);
     context.authenticator = makeAuthenticator(arguments.getUserpass(), componentFactory);
     context.htmlPageFactory = componentFactory.getHtmlPageFactory(new HtmlPageFactory());
-    context.shouldCollectHistory = !arguments.isOmittingHistory();
 
     extraOutput = componentFactory.loadPlugins(context.responderFactory, wikiPageFactory);
     extraOutput += componentFactory.loadWikiPage(wikiPageFactory);
@@ -69,7 +71,7 @@ public class FitNesseMain {
   }
 
   public static Arguments parseCommandLine(String[] args) {
-    CommandLine commandLine = new CommandLine("[-p port][-d dir][-r root][-l logDir][-e days][-o][-h][-a userpass]");
+    CommandLine commandLine = new CommandLine("[-p port][-d dir][-r root][-l logDir][-e days][-o][-a userpass]");
     Arguments arguments = null;
     if (commandLine.parse(args)) {
       arguments = new Arguments();
@@ -86,7 +88,6 @@ public class FitNesseMain {
       if (commandLine.hasOption("a"))
         arguments.setUserpass(commandLine.getOptionArgument("a", "userpass"));
       arguments.setOmitUpdates(commandLine.hasOption("o"));
-      arguments.setOmitHistory(commandLine.hasOption("h"));
     }
     return arguments;
   }
@@ -118,7 +119,6 @@ public class FitNesseMain {
     System.err.println("\t-l <log directory> {no logging}");
     System.err.println("\t-e <days> {" + Arguments.DEFAULT_VERSION_DAYS + "} Number of days before page versions expire");
     System.err.println("\t-o omit updates");
-    System.err.println("\t-h do not record test history.");    
     System.err.println("\t-a {user:pwd | user-file-name} enable authentication.");
   }
 
