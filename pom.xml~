@@ -79,7 +79,7 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
           <includes>
-            <include>**/*Test.java</include>
+            <include>**/*Test2.java</include>
           </includes>
         </configuration>
       </plugin>
