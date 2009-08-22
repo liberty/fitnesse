@@ -2,12 +2,10 @@
 // Released under the terms of the CPL Common Public License version 1.0.
 package fitnesse.components;
 
-import fit.FitServer;
 import fitnesse.responders.run.SocketDealer;
 import fitnesse.responders.run.SocketDoner;
 import fitnesse.responders.run.SocketSeeker;
 import fitnesse.responders.run.TestSystemListener;
-import fitnesse.testutil.MockCommandRunner;
 
 import java.util.Map;
 
@@ -22,8 +20,6 @@ public class CommandRunningFitClient extends FitClient implements SocketSeeker {
 
   private Thread timeoutThread;
   private Thread earlyTerminationThread;
-  private boolean fastTest = false;
-  private Thread fastFitServer;
 
   public CommandRunningFitClient(TestSystemListener listener, String command, int port, SocketDealer dealer, boolean fastTest)
     throws Exception {
@@ -33,14 +29,12 @@ public class CommandRunningFitClient extends FitClient implements SocketSeeker {
   public CommandRunningFitClient(TestSystemListener listener, String command, int port, Map<String, String> environmentVariables, SocketDealer dealer, boolean fastTest)
     throws Exception {
     super(listener);
-    this.fastTest = fastTest;
     ticketNumber = dealer.seekingSocket(this);
     String hostName = java.net.InetAddress.getLocalHost().getHostName();
     String fitArguments = hostName + SPACE + port + SPACE + ticketNumber;
     String commandLine = command + SPACE + fitArguments;
     if (fastTest) {
-      commandRunner = new MockCommandRunner();
-      createFitServer("-x " + fitArguments);
+      commandRunner = new ThreadCommandRunner(command, fitArguments);
     } else
       commandRunner = new CommandRunner(commandLine, "", environmentVariables);
   }
@@ -51,32 +45,6 @@ public class CommandRunningFitClient extends FitClient implements SocketSeeker {
 
   public CommandRunningFitClient(TestSystemListener listener, String command, int port, Map<String, String> environmentVariables, SocketDealer dealer) throws Exception {
     this(listener, command, port, environmentVariables, dealer, false);
-  }
-
-  //For testing only.  Makes responder faster.
-  void createFitServer(String args) throws Exception {
-    final String fitArgs = args;
-    Runnable fastFitServerRunnable = new Runnable() {
-      public void run() {
-        try {
-          while (!tryCreateFitServer(fitArgs))
-            Thread.sleep(10);
-        } catch (Exception e) {
-
-        }
-      }
-    };
-    fastFitServer = new Thread(fastFitServerRunnable);
-    fastFitServer.start();
-  }
-
-  private boolean tryCreateFitServer(String args) throws Exception {
-    try {
-      FitServer.main(args.trim().split(" "));
-      return true;
-    } catch (Exception e) {
-      return false;
-    }
   }
 
   public void start() throws Exception {
@@ -120,11 +88,7 @@ public class CommandRunningFitClient extends FitClient implements SocketSeeker {
 
   public void join() throws Exception {
     try {
-      if (fastTest) {
-        fastFitServer.join();
-      } else {
-        commandRunner.join();
-      }
+	   commandRunner.join();
       super.join();
       if (donor != null)
         donor.finishedWithSocket();
@@ -172,22 +136,22 @@ public class CommandRunningFitClient extends FitClient implements SocketSeeker {
     }
   }
 
-  private class EarlyTerminationRunnable implements Runnable {
-    public void run() {
-      try {
-        Thread.sleep(1000);  // next waitFor() can finish too quickly on Linux!
-        commandRunner.process.waitFor();
-        synchronized (CommandRunningFitClient.this) {
-          if (!connectionEstablished) {
-            CommandRunningFitClient.this.notify();
-            listener.exceptionOccurred(new Exception(
-              "FitClient: external process terminated before a connection could be established."));
-          }
-        }
-      }
-      catch (InterruptedException e) {
-        // ok
-      }
-    }
-  }
+	private class EarlyTerminationRunnable implements Runnable {
+		public void run() {
+			try {
+				Thread.sleep(1000);  // next waitFor() can finish too quickly on Linux!
+				commandRunner.join();
+			}
+			catch (Exception e) {
+				// ok
+			}
+			synchronized (CommandRunningFitClient.this) {
+				if (!connectionEstablished) {
+					CommandRunningFitClient.this.notify();
+					listener.exceptionOccurred(new Exception(
+							  "FitClient: external process terminated before a connection could be established."));
+				}
+			}
+		}
+	}
 }

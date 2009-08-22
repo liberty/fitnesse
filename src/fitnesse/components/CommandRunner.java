@@ -74,11 +74,16 @@ public class CommandRunner {
 
  public void join() throws Exception {
    process.waitFor();
-   endTime = System.currentTimeMillis();
-   exitCode = process.exitValue();
+	initExitState();
  }
 
- public void kill() throws Exception {
+	private void initExitState() {
+		if (exitCode != -1) return;
+		endTime = System.currentTimeMillis();
+		exitCode = process.exitValue();
+	}
+
+	public void kill() throws Exception {
    if (process != null) {
      process.destroy();
      join();
