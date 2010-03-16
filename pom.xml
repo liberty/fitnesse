@@ -105,24 +105,48 @@
         </configuration>
       </plugin>
       <plugin>
-         <artifactId>maven-antrun-plugin</artifactId>
-         <executions>
-            <execution>
-               <id>copy-resources</id>
-               <phase>process-classes</phase>
-               <goals>
-                  <goal>run</goal>
-               </goals>
-               <configuration>
-                  <tasks>
-                     <property name="classes" refid="maven.runtime.classpath"/>
-                     <ant target="createUpdateLists" inheritRefs="true"/>
-                  </tasks>
-               </configuration>
-            </execution>
-         </executions>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>copy-resources</id>
+            <phase>process-classes</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+              <configuration>
+                <tasks>
+                  <property name="classes" refid="maven.runtime.classpath"/>
+                  <ant target="createUpdateLists" inheritRefs="true"/>
+                </tasks>
+              </configuration>
+           </execution>
+        </executions>
       </plugin>
-  </plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>assemble</id>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <appendAssemblyId>false</appendAssemblyId>
+          <descriptorRefs>
+            <descriptorRef>jar-with-dependencies</descriptorRef>
+          </descriptorRefs>
+          <archive>
+            <manifest>
+              <mainClass>fitnesseMain.FitNesseMain</mainClass>
+            </manifest>
+          </archive>
+        </configuration>
+      </plugin>
+    </plugins>
   </build>
    <distributionManagement>
        <repository>
