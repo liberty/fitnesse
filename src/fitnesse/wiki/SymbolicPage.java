@@ -80,6 +80,20 @@ public class SymbolicPage extends BaseWikiPage {
     return realPage.commit(data);
   }
 
+  public List<WikiPageAction> getActions() throws Exception {
+    List<WikiPageAction> actions = super.getActions();
+    actions.add(makeLinkedPageAction());
+    return actions;
+  }
+
+  private WikiPageAction makeLinkedPageAction() throws Exception {
+    WikiPagePath actualPagePath = getPageCrawler().getFullPath(realPage);
+    String actualPageName = PathParser.render(actualPagePath);
+    WikiPageAction action = new WikiPageAction(actualPageName, "Real Page");
+    action.setQuery("");
+    return action;
+  }
+
   //TODO Delete these method alone with ProxyPage when the time is right.
   public boolean hasExtension(String extensionName) {
     return realPage.hasExtension(extensionName);
