@@ -16,42 +16,42 @@ import fitnesse.wikitext.widgets.*;
 @SuppressWarnings("unchecked")
 public class WidgetBuilder {
   public static WidgetBuilder htmlWidgetBuilder = new WidgetBuilder(
+    MetaWidget.class,
+    HeaderWidget.class,
+    IncludeWidget.class,
+    AliasLinkWidget.class,
+    VariableDefinitionWidget.class,
+    RegExVariableDefinitionWidget.class,
+    DateExpressionWidget.class,
+    TodayWidget.class,
+    VariableWidget.class,
     CommentWidget.class,
     LiteralWidget.class,
-    WikiWordWidget.class,
+    TableWidget.class,
+    ClasspathWidget.class,
+    NoteWidget.class,
+    HruleWidget.class,
     BoldWidget.class,
     ItalicWidget.class,
     PreformattedWidget.class,
-    HruleWidget.class,
-    HeaderWidget.class,
     CenterWidget.class,
-    NoteWidget.class,
+    WikiWordWidget.class,
     StyleWidget.ParenFormat.class,
     StyleWidget.BraceFormat.class,
     StyleWidget.BracketFormat.class,
-    TableWidget.class,
     ListWidget.class,
-    ClasspathWidget.class,
     ImageWidget.class,
     LinkWidget.class,
     TOCWidget.class,
-    AliasLinkWidget.class,
-    VirtualWikiWidget.class,
     StrikeWidget.class,
-    LastModifiedWidget.class,
-    TodayWidget.class,
-    XRefWidget.class,
-    MetaWidget.class,
     EmailWidget.class,
     AnchorDeclarationWidget.class,
     AnchorMarkerWidget.class,
     CollapsableWidget.class,
-    IncludeWidget.class,
-    VariableDefinitionWidget.class,
+    XRefWidget.class,
     EvaluatorWidget.class,
-    VariableWidget.class,
-    DateExpressionWidget.class,
-    RegExVariableDefinitionWidget.class
+    LastModifiedWidget.class,
+    VirtualWikiWidget.class
   );
 
   public static WidgetBuilder literalVariableEvaluatorWidgetBuilder = new WidgetBuilder(
@@ -72,7 +72,7 @@ public class WidgetBuilder {
 
   public WidgetBuilder() {
   }
-  
+
   public WidgetBuilder(Class<? extends WikiWidget>... widgetClasses) {
     for (Class<? extends WikiWidget> widgetClass : widgetClasses) {
       addWidgetClass(widgetClass);
@@ -93,7 +93,7 @@ public class WidgetBuilder {
       return widget;
     }
     catch (Exception e) {
-      RuntimeException exception = new RuntimeException("Widget Construction failed for " + 
+      RuntimeException exception = new RuntimeException("Widget Construction failed for " +
         widgetClass.getName() + "\n" + e.getMessage());
       exception.setStackTrace(e.getStackTrace());
       throw exception;
@@ -133,6 +133,7 @@ public class WidgetBuilder {
   private WidgetData findFirstMatch(String value) {
     resetWidgetDataList();
 
+    int bestPossibleMatchStart = determineBestPossibleMatchStart(value);
     WidgetData firstMatch = null;
     for (WidgetData widgetData : this.widgetData) {
       Matcher match = widgetData.pattern.matcher(value);
@@ -142,9 +143,22 @@ public class WidgetBuilder {
           firstMatch = widgetData;
         else if (match.start() < firstMatch.match.start())
           firstMatch = widgetData;
+
+        // Break if the current match is at the start and we can not have a better match that this one..
+        if (firstMatch.match.start() <= bestPossibleMatchStart)
+          break;
       }
     }
     return firstMatch;
+  }
+
+  private int determineBestPossibleMatchStart(String value) {
+    int bestStart = 0;
+    if (this.widgetData.size() > 10) { // This isn't worth it if small number of widgets to loop thru'
+      String trimmedValue = value.replaceFirst("\\s+", "");
+      bestStart = value.length() - trimmedValue.length();
+    }
+    return bestStart;
   }
 
   private void resetWidgetDataList() {
