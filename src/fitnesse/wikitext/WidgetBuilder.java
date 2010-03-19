@@ -154,10 +154,11 @@ public class WidgetBuilder {
 
   private int determineBestPossibleMatchStart(String value) {
     int bestStart = 0;
-    if (this.widgetData.size() > 10) { // This isn't worth it if small number of widgets to loop thru'
-      String trimmedValue = value.replaceFirst("\\s+", "");
-      bestStart = value.length() - trimmedValue.length();
-    }
+    // This makes some tests fail.. Need to investigate why.. For now, this optimization can wait..
+//    if (this.widgetData.size() > 10) { // This isn't worth it if small number of widgets to loop thru'
+//      String trimmedValue = value.replaceFirst("\\s+", "");
+//      bestStart = value.length() - trimmedValue.length();
+//    }
     return bestStart;
   }
 
